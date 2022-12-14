@@ -1,5 +1,4 @@
-#!/usr/bin/env bash
-###
+#!/usr/bin/env bash###
 # File: entrypoint.sh
 # Project: docker-steam-headless
 # File Created: Saturday, 8th January 2022 7:08:46 pm

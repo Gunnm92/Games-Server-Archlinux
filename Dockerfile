@@ -12,16 +12,14 @@ ENV websockify_version=0.9.0
 # COPY ./noVNC-${noVNC_version}.tar.gz /noVNC.tar.gz
 
 # Update package repos
-RUN \
-    echo "**** Update package manager ****" \
+RUN echo "**** Update package manager ****" \
         && sed -i 's/^NoProgressBar/#NoProgressBar/g' /etc/pacman.conf \
         && echo -e "[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /etc/pacman.conf \
     && \
     echo
 
 # Update locale
-RUN \
-    echo "**** Configure locals ****" \
+RUN echo "**** Configure locals ****" \
         && echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen \
         && locale-gen \
     && \
@@ -32,8 +30,7 @@ ENV \
     LC_ALL=en_US.UTF-8
 
 # Re-install certificates
-RUN \
-    echo "**** Install certificates ****" \
+RUN echo "**** Install certificates ****" \
 	    && pacman -Syu --noconfirm --needed \
             ca-certificates \
     && \
@@ -43,8 +40,7 @@ RUN \
     echo
 
 # Install core packages
-RUN \
-    echo "**** Install tools ****" \
+RUN echo "**** Install tools ****" \
 	    && pacman -Syu --noconfirm --needed \
             bash \
             bash-completion \
@@ -64,8 +60,7 @@ RUN \
             xz \
             tigervnc 
 
-RUN \
-    echo "**** Install python ****" \
+RUN echo "**** Install python ****" \
 	    && pacman -Syu --noconfirm --needed \
             python \
             python-numpy \
@@ -78,8 +73,7 @@ RUN \
     echo
 
 # Install supervisor
-RUN \
-    echo "**** Install supervisor ****" \
+RUN echo "**** Install supervisor ****" \
 	    && pacman -Syu --noconfirm --needed \
             supervisor \
     && \
@@ -88,11 +82,48 @@ RUN \
     && \
     echo
 
-# Install X Server requirements
+# Install mesa requirements
+RUN echo "**** Install mesa and vulkan requirements ****" \
+	    && pacman -Syu --noconfirm --needed \
+            glu \
+            libva-mesa-driver \
+            mesa-utils \
+            mesa-vdpau \
+            opencl-mesa \
+            pciutils \
+            vulkan-mesa-layers \
+    && \
+    echo "**** Section cleanup ****" \
+	    && pacman -Scc --noconfirm \
+    && \
+    echo
+
 RUN \
     echo "**** Install X Server requirements ****" \
 	    && pacman -Syu --noconfirm --needed \
+            avahi \
+            dbus \
+            lib32-fontconfig \
+            ttf-liberation \
+            x11vnc \
+            xorg \
+            xorg-apps \
+            xorg-font-util \
+            xorg-fonts-misc \
+            xorg-fonts-type1 \
             xorg-server \
+            xorg-server-xephyr \
+            xorg-server-xvfb \
+            xorg-xauth \
+            xorg-xbacklight \
+            xorg-xhost \
+            xorg-xinit \
+            xorg-xinput \
+            xorg-xkill \
+            xorg-xprop \
+            xorg-xrandr \
+            xorg-xsetroot \
+            xorg-xwininfo \
     && \
     echo "**** Section cleanup ****" \
 	    && pacman -Scc --noconfirm \
@@ -100,8 +131,7 @@ RUN \
     echo
 
 # Install audio requirements
-RUN \
-    echo "**** Install audio requirements ****" \
+RUN echo "**** Install audio requirements ****" \
 	    && pacman -Syu --noconfirm --needed \
             pulseaudio \
     && \
@@ -125,8 +155,7 @@ RUN \
 
     
 # Install desktop environment
-RUN \
-     echo "**** Install desktop environment ****" \
+RUN echo "**** Install desktop environment ****" \
  	    && pacman -Syu --noconfirm --needed \
              kde-system-meta \
              konsole \
@@ -138,8 +167,7 @@ RUN \
      echo
 
 # Install Chromium
-RUN \
-    echo "**** Install Chromium ****" \
+RUN echo "**** Install Chromium ****" \
 	    && pacman -Syu --noconfirm --needed \
             chromium \
     && \
@@ -160,16 +188,45 @@ RUN \
 #    echo
 
 # Install noVNC
-RUN	wget https://github.com/novnc/websockify/archive/v${websockify_version}.tar.gz -O /websockify.tar.gz \
-	&& tar -xvf /websockify.tar.gz -C / \
-	&& cd /websockify-${websockify_version} \
-	&& python setup.py install \
-	&& cd / && rm -r /websockify.tar.gz /websockify-${websockify_version} \
-	&& wget https://github.com/novnc/noVNC/archive/v${noVNC_version}.tar.gz -O /noVNC.tar.gz \
-	&& tar -xvf /noVNC.tar.gz -C / \
-	&& cd /noVNC-${noVNC_version} \
-	&& ln -s vnc.html index.html \
-	&& rm /noVNC.tar.gz
+ARG NOVNC_VERSION=1.2.0
+RUN \
+    echo "**** Fetch noVNC ****" \
+        && cd /tmp \
+        && wget -O /tmp/novnc.tar.gz https://github.com/novnc/noVNC/archive/v${NOVNC_VERSION}.tar.gz \
+    && \
+    echo "**** Extract noVNC ****" \
+        && cd /tmp \
+        && tar -xvf /tmp/novnc.tar.gz \
+    && \
+    echo "**** Configure noVNC ****" \
+        && cd /tmp/noVNC-${NOVNC_VERSION} \
+        && sed -i 's/credentials: { password: password } });/credentials: { password: password },\n                           wsProtocols: ["'"binary"'"] });/g' app/ui.js \
+        && mkdir -p /opt \
+        && rm -rf /opt/noVNC \
+        && cd /opt \
+        && mv -f /tmp/noVNC-${NOVNC_VERSION} /opt/noVNC \
+        && cd /opt/noVNC \
+        && ln -s vnc.html index.html \
+        && chmod -R 755 /opt/noVNC \
+    && \
+    echo "**** Modify noVNC title ****" \
+        && sed -i '/    document.title =/c\    document.title = "Steam Headless - noVNC";' \
+            /opt/noVNC/app/ui.js \
+    && \
+    echo "**** Section cleanup ****" \
+        && rm -rf \
+            /tmp/noVNC* \
+            /tmp/novnc.tar.gz
+
+# Install Nginx
+RUN echo "**** Install Nginx ****" \
+	    && pacman -Syu --noconfirm --needed \
+            nginx \
+    && \
+    echo "**** Section cleanup ****" \
+	    && pacman -Scc --noconfirm \
+    && \
+    echo
 
 # Configure default user and set env
 ENV \
@@ -179,8 +236,7 @@ ENV \
     TZ="Pacific/Auckland" \
     USER_LOCALES="en_US.UTF-8 UTF-8"
 
-RUN \
-    echo "**** Configure default user '${USER}' ****" \
+RUN echo "**** Configure default user '${USER}' ****" \
         && mkdir -p \
             ${USER_HOME} \
         && useradd -d ${USER_HOME} -s /bin/bash ${USER} \
@@ -189,8 +245,8 @@ RUN \
         && echo "${USER} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Add FS overlay
-COPY ./config/xstartup /root/.vnc/
-COPY ./start.sh /
+COPY ./config/xstartup /${USER_HOME}/.vnc/
+#COPY ./start.sh /
 COPY overlay /
 
 # Set display environment variables

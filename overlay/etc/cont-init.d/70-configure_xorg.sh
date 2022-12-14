@@ -95,15 +95,15 @@ function configure_x_server {
     fi
 }
 
-#if ([ "${MODE}" != "s" ] && [ "${MODE}" != "secondary" ]); then
-#    if [[ -z ${nvidia_gpu_hex_id} ]]; then
-#        echo "**** Generate default xorg.conf ****";
-#        configure_x_server
-#    else
-#        echo "**** Generate NVIDIA xorg.conf ****";
-#        configure_x_server
-#        configure_nvidia_x_server
-#    fi
-#fi
+if ([ "${MODE}" != "s" ] && [ "${MODE}" != "secondary" ]); then
+    if [[ -z ${nvidia_gpu_hex_id} ]]; then
+        echo "**** Generate default xorg.conf ****";
+        Xorg :0 -configure
+    else
+        echo "**** Generate NVIDIA xorg.conf ****";
+        configure_x_server
+        configure_nvidia_x_server
+    fi
+fi
 
 echo "DONE"
